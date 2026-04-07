@@ -76,6 +76,7 @@ if ! pveam update; then
   echo -e "${YELLOW}⚠️ Warning: fallo en salida de pveam, continuando...${NC}"
 fi
 
+echo -e "${YELLOW} funciono salida de pveam, continuando...${NC}"
 #TEMPLATE=$(pveam available | awk '/debian-12/ {print $2; exit}')
 TEMPLATE=$(pveam available 2>/dev/null | grep debian-12 | head -n1 | awk '{print $2}')
 
