@@ -74,7 +74,8 @@ echo -e "${YELLOW}📦 Preparando template...${NC}"
 
 pveam update || true
 
-TEMPLATE=$(pveam available | awk '/debian-12/ {print $2; exit}')
+#TEMPLATE=$(pveam available | awk '/debian-12/ {print $2; exit}')
+TEMPLATE=$(pveam available 2>/dev/null | grep debian-12 | head -n1 | awk '{print $2}')
 
 if ! pveam list local | grep -q "$TEMPLATE"; then
   pveam download local $TEMPLATE
@@ -107,7 +108,7 @@ apt update && apt upgrade -y
 apt install -y curl git build-essential wget sudo libvips-dev ca-certificates
 
 # Node LTS
-curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+curl -fsSL https://deb.nodesource.com/setup_24.x | bash - &&
 apt install -y nodejs
 
 # pnpm
