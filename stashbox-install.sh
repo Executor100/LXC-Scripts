@@ -77,6 +77,7 @@ apt install -y curl build-essential git &&
 curl -fsSL https://deb.nodesource.com/setup_24.x | bash - &&
 apt install -y nodejs
 apt install -y git build-essential libvips-dev wget
+echo '✅ Dependencias base listas'
 "
 
 pct exec $CTID -- bash -c "
@@ -93,11 +94,36 @@ pnpm -v
 echo "⬇️ Instalando Go..."
 
 pct exec $CTID -- bash -c "
-wget -q https://go.dev/dl/go1.22.5.linux-amd64.tar.gz
+set -e
+
+GO_VERSION=1.22.5
+GO_TAR=go\${GO_VERSION}.linux-amd64.tar.gz
+
+cd /tmp
+
+# Descargar solo si no existe
+if [ ! -f \$GO_TAR ]; then
+  wget -q https://go.dev/dl/\$GO_TAR
+fi
+
+# Limpiar instalación previa
 rm -rf /usr/local/go
-tar -C /usr/local -xzf go1.22.5.linux-amd64.tar.gz
+
+# Instalar
+tar -C /usr/local -xzf \$GO_TAR
+
+# Hacer disponible globalmente (clave para LXC)
+ln -sf /usr/local/go/bin/go /usr/local/bin/go
+ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+
+# Persistencia opcional
 echo 'export PATH=\$PATH:/usr/local/go/bin' >> /root/.bashrc
-echo 'export PATH=\$PATH:/usr/local/bin'
+echo 'export PATH=\$PATH:/usr/local/go/bin' >> /root/.profile
+
+# Verificación
+go version
+
+echo '✅ Go instalado correctamente'
 "
 
 echo "📥 Instalando Stash-Box..."
@@ -110,19 +136,19 @@ git clone https://github.com/stashapp/stash-box.git /opt/stash-box
 
 echo "📦 Instalando dependencias Stash-Box..."
 pct exec $CTID -- bash -c "
-export PATH=$PATH:$(go env GOPATH)/bin
+export PATH=$PATH:/usr/local/go/bin
 cd /opt/stash-box/frontend
 pnpm install
 "
 pct exec $CTID -- bash -c "
-export PATH=$PATH:$(go env GOPATH)/bin
+export PATH=$PATH:/usr/local/go/bin
 cd /opt/stash-box
 go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 "
 
 echo "⚙️ Generando Stash-Box..."
 pct exec $CTID -- bash -c "
-export PATH=$PATH:$(go env GOPATH)/bin
+export PATH=$PATH:/usr/local/go/bin
 cd /opt/stash-box
 export NODE_OPTIONS="--max-old-space-size=4096"
 make generate
