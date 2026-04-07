@@ -55,6 +55,7 @@ CORES="2"
 
 echo "🚀 Creando LXC $CTID..."
 
+
 # Crear contenedor
 echo "📦 Creando contenedor..."
 pct create $CTID local:vztmpl/$TEMPLATE \
