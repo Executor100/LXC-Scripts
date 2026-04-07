@@ -1,186 +1,180 @@
 #!/usr/bin/env bash
-set -e
+
+set -euo pipefail
+
+# ===== COLORES =====
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+# ===== LOG =====
+LOGFILE="stashbox-install.log"
+exec > >(tee -i $LOGFILE)
+exec 2>&1
 
 clear
-echo "🚀 Instalando StashBox en un contenedor LXC de Proxmox..."
 
-# ===== CONFIG DEFAULT (EDITABLE INTERACTIVO) =====
-APP="stash-box"
-# Obtener siguiente CTID automáticamente
-CTID=$(pvesh get /cluster/nextid)
+echo -e "${GREEN}"
+echo "╔══════════════════════════════════════╗"
+echo "║     🚀 Stash-Box LXC Installer      ║"
+echo "║        Proxmox Helper Style         ║"
+echo "╚══════════════════════════════════════╝"
+echo -e "${NC}"
 
-read -p "IP PostgreSQL: " DB_HOST
-read -p "Puerto PostgreSQL [5432]: " DB_PORT
-DB_PORT=${DB_PORT:-5432}
+# ===== FLAGS =====
+AUTO=false
 
-read -p "Nombre DB [stashbox]: " DB_NAME
-DB_NAME=${DB_NAME:-stashbox}
+if [[ "${1:-}" == "--auto" ]]; then
+  AUTO=true
+fi
 
-read -p "Usuario DB [stash]: " DB_USER
-DB_USER=${DB_USER:-stash}
+# ===== INPUT =====
+if [ "$AUTO" = false ]; then
+  read -p "IP PostgreSQL: " DB_HOST
+  read -p "Puerto [5432]: " DB_PORT
+  DB_PORT=${DB_PORT:-5432}
 
-read -s -p "Password DB: " DB_PASS
-echo ""
+  read -p "DB Name [stashbox]: " DB_NAME
+  DB_NAME=${DB_NAME:-stashbox}
 
-# Detectar almacenamiento LVM-thin automáticamente
+  read -p "Usuario [stash]: " DB_USER
+  DB_USER=${DB_USER:-stash}
+
+  read -s -p "Password: " DB_PASS
+  echo ""
+else
+  DB_HOST="192.168.71.15"
+  DB_PORT="5432"
+  DB_NAME="stashbox"
+  DB_USER="stash"
+  DB_PASS="stash"
+fi
+
+# ===== VALIDACIONES =====
+echo -e "${YELLOW}🔎 Validando entorno...${NC}"
+
+command -v pct >/dev/null || { echo -e "${RED}❌ pct no encontrado${NC}"; exit 1; }
+command -v pvesh >/dev/null || { echo -e "${RED}❌ pvesh no encontrado${NC}"; exit 1; }
+
+# ===== STORAGE =====
 STORAGE=$(pvesm status | awk '/lvmthin/ {print $1; exit}')
-
 if [ -z "$STORAGE" ]; then
-  echo "❌ No se encontró almacenamiento LVM-thin (local-lvm)"
+  echo -e "${RED}❌ No LVM-thin detectado${NC}"
   exit 1
 fi
 
-echo "📦 Usando storage: $STORAGE"
-echo "🆔 CTID asignado: $CTID"
+CTID=$(pvesh get /cluster/nextid)
 
-# Actualizar templates
-echo "🔄 Actualizando templates..."
+echo -e "${GREEN}✔ Storage: $STORAGE${NC}"
+echo -e "${GREEN}✔ CTID: $CTID${NC}"
+
+# ===== TEMPLATE =====
+echo -e "${YELLOW}📦 Preparando template...${NC}"
+
 pveam update
 
-# Descargar template Debian 12 si no existe
 TEMPLATE=$(pveam available | awk '/debian-12/ {print $2; exit}')
+
 if ! pveam list local | grep -q "$TEMPLATE"; then
-  echo "⬇️ Descargando template $TEMPLATE..."
   pveam download local $TEMPLATE
-else
-  echo "✅ Template ya existe"
 fi
 
-HOSTNAME="stashbox"
-DISK="8G"
-RAM="2048"
-CORES="2"
-#TEMPLATE="local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"
+# ===== CREAR CT =====
+echo -e "${YELLOW}🚀 Creando contenedor...${NC}"
 
-echo "🚀 Creando LXC $CTID..."
-# Crear contenedor
-echo "📦 Creando contenedor..."
 pct create $CTID local:vztmpl/$TEMPLATE \
   --hostname stashbox \
   --rootfs ${STORAGE}:8 \
-  --memory 1024 \
+  --memory 2048 \
   --cores 2 \
   --net0 name=eth0,bridge=vmbr0,ip=dhcp \
   --unprivileged 1 \
   --features nesting=1
 
-echo "▶️ Iniciando contenedor..."
 pct start $CTID
+
+echo -e "${YELLOW}⏳ Esperando red...${NC}"
 sleep 5
 
-echo "📦 Instalando dependencias..."
-
-echo "⚙️ Instalando dependencias dentro del CT..."
-pct exec $CTID -- bash -c "
-apt update && apt upgrade -y
-apt install -y curl build-essential git &&
-curl -fsSL https://deb.nodesource.com/setup_24.x | bash - &&
-apt install -y nodejs
-apt install -y git build-essential libvips-dev wget
-echo '✅ Dependencias base listas'
-"
-
-pct exec $CTID -- bash -c "
-apt update && apt install sudo -y
-"
-# Instalar pnpm
-echo "⚙️ Instalando pnpm..."
-pct exec $CTID -- bash -c "
-npm install -g pnpm --force
-export PATH=\$PATH:/usr/local/bin
-pnpm -v
-"
-
-echo "⬇️ Instalando Go..."
+# ===== INSTALL CORE =====
+echo -e "${YELLOW}⚙️ Instalando dependencias...${NC}"
 
 pct exec $CTID -- bash -c "
 set -e
 
-GO_VERSION=1.22.5
-GO_TAR=go\${GO_VERSION}.linux-amd64.tar.gz
+apt update && apt upgrade -y
+apt install -y curl git build-essential wget sudo libvips-dev ca-certificates
 
+# Node LTS
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
+
+# pnpm
+npm install -g pnpm
+ln -sf \$(which pnpm) /usr/local/bin/pnpm
+
+# Go
 cd /tmp
-
-# Descargar solo si no existe
-if [ ! -f \$GO_TAR ]; then
-  wget -q https://go.dev/dl/\$GO_TAR
-fi
-
-# Limpiar instalación previa
+wget -q https://go.dev/dl/go1.22.5.linux-amd64.tar.gz
 rm -rf /usr/local/go
-
-# Instalar
-tar -C /usr/local -xzf \$GO_TAR
-
-# Hacer disponible globalmente (clave para LXC)
+tar -C /usr/local -xzf go1.22.5.linux-amd64.tar.gz
 ln -sf /usr/local/go/bin/go /usr/local/bin/go
-ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
-
-# Persistencia opcional
-echo 'export PATH=\$PATH:/usr/local/go/bin' >> /root/.bashrc
-echo 'export PATH=\$PATH:/usr/local/go/bin' >> /root/.profile
 
 # Verificación
 go version
-
-echo '✅ Go instalado correctamente'
+node -v
+pnpm -v
 "
 
-echo "📥 Instalando Stash-Box..."
+# ===== CLONAR =====
+echo -e "${YELLOW}📥 Instalando Stash-Box...${NC}"
 
-echo "▶️ Clonando Stash-Box..."
 pct exec $CTID -- bash -c "
-export PATH=\$PATH:/usr/local/go/bin
+set -e
 git clone https://github.com/stashapp/stash-box.git /opt/stash-box
 "
 
-echo "📦 Instalando dependencias Stash-Box..."
+# ===== BUILD =====
+echo -e "${YELLOW}🔨 Build...${NC}"
+
 pct exec $CTID -- bash -c "
-export PATH=$PATH:/usr/local/go/bin
+set -e
+
 cd /opt/stash-box/frontend
 pnpm install
-"
-pct exec $CTID -- bash -c "
-export PATH=$PATH:/usr/local/go/bin
+
 cd /opt/stash-box
 go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
-"
 
-echo "⚙️ Generando Stash-Box..."
-pct exec $CTID -- bash -c "
-export PATH=$PATH:/usr/local/go/bin
-cd /opt/stash-box
-export NODE_OPTIONS="--max-old-space-size=4096"
+export NODE_OPTIONS='--max-old-space-size=4096'
+
 make generate
 make ui build
 "
 
-echo "⚙️ Configurando..."
+# ===== CONFIG =====
+echo -e "${YELLOW}⚙️ Configurando...${NC}"
 
-pct exec $CTID -- bash -c "
-mkdir -p /etc/stash-box
-
-cat <<EOF > /etc/stash-box/config.yml
+pct exec $CTID -- bash -c "cat > /etc/stash-box.yml <<EOF
 database:
   connectionString: postgres://$DB_USER:$DB_PASS@$DB_HOST:$DB_PORT/$DB_NAME?sslmode=disable
-
 host: 0.0.0.0
 port: 9998
-EOF
-"
+EOF"
 
-echo "🔧 Creando servicio..."
+# ===== SERVICE =====
+echo -e "${YELLOW}🔧 Creando servicio...${NC}"
 
 pct exec $CTID -- bash -c "
-cat <<EOF > /etc/systemd/system/stash-box.service
+cat > /etc/systemd/system/stash-box.service <<EOF
 [Unit]
 Description=Stash-Box
 After=network.target
 
 [Service]
-ExecStart=/opt/stash-box/stash-box --config /etc/stash-box/config.yml
+ExecStart=/opt/stash-box/stash-box --config /etc/stash-box.yml
 Restart=always
-User=root
 
 [Install]
 WantedBy=multi-user.target
@@ -191,8 +185,10 @@ systemctl enable stash-box
 systemctl start stash-box
 "
 
+# ===== RESULT =====
 IP=$(pct exec $CTID -- hostname -I | awk '{print $1}')
 
 echo ""
-echo "✅ Listo!"
-echo "🌐 http://$IP:9998"
+echo -e "${GREEN}✅ Instalación completa${NC}"
+echo -e "${GREEN}🌐 http://$IP:9998${NC}"
+echo -e "${YELLOW}📄 Log: $LOGFILE${NC}"
