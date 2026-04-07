@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#set -euo pipefail
+set -euo pipefail
 
 # ===== COLORES =====
 RED='\033[0;31m'
@@ -149,6 +149,8 @@ pnpm install
 
 cd /opt/stash-box
 go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+ln -sf /root/go/bin/sqlc /usr/local/bin/sqlc
+sqlc version
 
 export NODE_OPTIONS='--max-old-space-size=4096'
 
