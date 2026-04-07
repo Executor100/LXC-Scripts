@@ -107,7 +107,7 @@ apt update && apt upgrade -y
 apt install -y curl git build-essential wget sudo libvips-dev ca-certificates
 
 # Node LTS
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
 apt install -y nodejs
 
 # pnpm
