@@ -51,7 +51,7 @@ HOSTNAME="stashbox"
 DISK="8G"
 RAM="2048"
 CORES="2"
-TEMPLATE="local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"
+#TEMPLATE="local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"
 
 echo "🚀 Creando LXC $CTID..."
 
