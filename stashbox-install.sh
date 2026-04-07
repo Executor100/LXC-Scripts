@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 set -e
 
+clear
+echo "🚀 Instalando StashBox en un contenedor LXC de Proxmox..."
+
 # ===== CONFIG DEFAULT (EDITABLE INTERACTIVO) =====
 APP="stash-box"
+# Obtener siguiente CTID automáticamente
 CTID=$(pvesh get /cluster/nextid)
 
 read -p "IP PostgreSQL: " DB_HOST
@@ -18,6 +22,31 @@ DB_USER=${DB_USER:-stash}
 read -s -p "Password DB: " DB_PASS
 echo ""
 
+# Detectar almacenamiento LVM-thin automáticamente
+STORAGE=$(pvesm status | awk '/lvmthin/ {print $1; exit}')
+
+if [ -z "$STORAGE" ]; then
+  echo "❌ No se encontró almacenamiento LVM-thin (local-lvm)"
+  exit 1
+fi
+
+echo "📦 Usando storage: $STORAGE"
+echo "🆔 CTID asignado: $CTID"
+
+# Actualizar templates
+echo "🔄 Actualizando templates..."
+pveam update
+
+# Descargar template Debian 12 si no existe
+TEMPLATE=$(pveam available | awk '/debian-12/ {print $2; exit}')
+
+if ! pveam list local | grep -q "$TEMPLATE"; then
+  echo "⬇️ Descargando template $TEMPLATE..."
+  pveam download local $TEMPLATE
+else
+  echo "✅ Template ya existe"
+fi
+
 HOSTNAME="stashbox"
 DISK="8G"
 RAM="2048"
@@ -26,19 +55,24 @@ TEMPLATE="local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"
 
 echo "🚀 Creando LXC $CTID..."
 
-pct create $CTID $TEMPLATE \
-  -hostname $HOSTNAME \
-  -cores $CORES \
-  -memory $RAM \
-  -rootfs local-lvm:$DISK \
-  -net0 name=eth0,bridge=vmbr0,ip=dhcp \
-  -unprivileged 1
+# Crear contenedor
+echo "📦 Creando contenedor..."
+pct create $CTID local:vztmpl/$TEMPLATE \
+  --hostname stashbox \
+  --rootfs ${STORAGE}:8 \
+  --memory 1024 \
+  --cores 2 \
+  --net0 name=eth0,bridge=vmbr0,ip=dhcp \
+  --unprivileged 1 \
+  --features nesting=1
 
+echo "▶️ Iniciando contenedor..."
 pct start $CTID
 sleep 5
 
 echo "📦 Instalando dependencias..."
 
+echo "⚙️ Instalando dependencias dentro del CT..."
 pct exec $CTID -- bash -c "
 apt update && apt upgrade -y
 apt install -y git build-essential libvips-dev wget
