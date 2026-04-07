@@ -121,6 +121,8 @@ wget -q https://go.dev/dl/go1.22.5.linux-amd64.tar.gz
 rm -rf /usr/local/go
 tar -C /usr/local -xzf go1.22.5.linux-amd64.tar.gz
 ln -sf /usr/local/go/bin/go /usr/local/bin/go
+echo 'export PATH=/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' > /etc/profile.d/go.sh
+chmod +x /etc/profile.d/go.sh
 
 # Verificación
 go version
@@ -141,7 +143,7 @@ echo -e "${YELLOW}🔨 Build...${NC}"
 
 pct exec $CTID -- bash -c "
 set -e
-
+export PATH=/usr/local/go/bin:\$PATH
 cd /opt/stash-box/frontend
 pnpm install
 
