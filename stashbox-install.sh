@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+#set -euo pipefail
 
 # ===== COLORES =====
 RED='\033[0;31m'
