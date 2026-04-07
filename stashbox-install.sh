@@ -110,10 +110,13 @@ git clone https://github.com/stashapp/stash-box.git /opt/stash-box
 
 echo "📦 Instalando dependencias Stash-Box..."
 pct exec $CTID -- bash -c "
-cd /opt/stash-box
-cd frontend
+export PATH=$PATH:$(go env GOPATH)/bin
+cd /opt/stash-box/frontend
 pnpm install
-cd ..
+"
+pct exec $CTID -- bash -c "
+export PATH=$PATH:$(go env GOPATH)/bin
+cd /opt/stash-box
 go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 "
 
