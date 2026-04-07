@@ -106,7 +106,12 @@ pct exec $CTID -- bash -c "
 export PATH=\$PATH:/usr/local/go/bin
 git clone https://github.com/stashapp/stash-box.git /opt/stash-box
 cd /opt/stash-box
-make build
+cd frontend
+pnpm install
+cd ..
+go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+export PATH=$PATH:$(go env GOPATH)/bin
+export NODE_OPTIONS="--max-old-space-size=4096"
 make generate
 make ui build
 "
