@@ -39,7 +39,6 @@ pveam update
 
 # Descargar template Debian 12 si no existe
 TEMPLATE=$(pveam available | awk '/debian-12/ {print $2; exit}')
-
 if ! pveam list local | grep -q "$TEMPLATE"; then
   echo "⬇️ Descargando template $TEMPLATE..."
   pveam download local $TEMPLATE
@@ -54,8 +53,6 @@ CORES="2"
 #TEMPLATE="local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"
 
 echo "🚀 Creando LXC $CTID..."
-
-
 # Crear contenedor
 echo "📦 Creando contenedor..."
 pct create $CTID local:vztmpl/$TEMPLATE \
@@ -76,7 +73,21 @@ echo "📦 Instalando dependencias..."
 echo "⚙️ Instalando dependencias dentro del CT..."
 pct exec $CTID -- bash -c "
 apt update && apt upgrade -y
+apt install -y curl build-essential git &&
+curl -fsSL https://deb.nodesource.com/setup_24.x | bash - &&
+apt install -y nodejs
 apt install -y git build-essential libvips-dev wget
+"
+
+pct exec $CTID -- bash -c "
+apt update && apt install sudo -y
+"
+# Instalar pnpm
+echo "⚙️ Instalando pnpm..."
+pct exec $CTID -- bash -c "
+npm install -g pnpm --force
+export PATH=\$PATH:/usr/local/bin
+pnpm -v
 "
 
 echo "⬇️ Instalando Go..."
@@ -86,6 +97,7 @@ wget -q https://go.dev/dl/go1.22.5.linux-amd64.tar.gz
 rm -rf /usr/local/go
 tar -C /usr/local -xzf go1.22.5.linux-amd64.tar.gz
 echo 'export PATH=\$PATH:/usr/local/go/bin' >> /root/.bashrc
+echo 'export PATH=\$PATH:/usr/local/bin'
 "
 
 echo "📥 Instalando Stash-Box..."
@@ -95,6 +107,8 @@ export PATH=\$PATH:/usr/local/go/bin
 git clone https://github.com/stashapp/stash-box.git /opt/stash-box
 cd /opt/stash-box
 make build
+make generate
+make ui build
 "
 
 echo "⚙️ Configurando..."
