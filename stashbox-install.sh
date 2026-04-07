@@ -102,23 +102,24 @@ echo 'export PATH=\$PATH:/usr/local/bin'
 
 echo "📥 Instalando Stash-Box..."
 
-echo "Clonando Stash-Box..."
+echo "▶️ Clonando Stash-Box..."
 pct exec $CTID -- bash -c "
 export PATH=\$PATH:/usr/local/go/bin
 git clone https://github.com/stashapp/stash-box.git /opt/stash-box
 "
-echo "Instalando dependencias Stash-Box..."
+
+echo "📦 Instalando dependencias Stash-Box..."
 pct exec $CTID -- bash -c "
 cd /opt/stash-box
 cd frontend
 pnpm install
 cd ..
 go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
-export PATH=$PATH:$(go env GOPATH)/bin
 "
 
-echo "Generando Stash-Box..."
+echo "⚙️ Generando Stash-Box..."
 pct exec $CTID -- bash -c "
+export PATH=$PATH:$(go env GOPATH)/bin
 cd /opt/stash-box
 export NODE_OPTIONS="--max-old-space-size=4096"
 make generate
