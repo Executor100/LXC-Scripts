@@ -72,9 +72,7 @@ echo -e "${GREEN}✔ CTID: $CTID${NC}"
 # ===== TEMPLATE =====
 echo -e "${YELLOW}📦 Preparando template...${NC}"
 
-if ! pveam update; then
-  echo -e "${YELLOW}⚠️ Warning: fallo en salida de pveam, continuando...${NC}"
-fi
+pveam update >/dev/null 2>&1 || true
 
 echo -e "${YELLOW} funciono salida de pveam, continuando...${NC}"
 #TEMPLATE=$(pveam available | awk '/debian-12/ {print $2; exit}')
