@@ -115,12 +115,12 @@ pnpm install
 cd ..
 go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 export PATH=$PATH:$(go env GOPATH)/bin
-export NODE_OPTIONS="--max-old-space-size=4096"
 "
 
 echo "Generando Stash-Box..."
 pct exec $CTID -- bash -c "
 cd /opt/stash-box
+export NODE_OPTIONS="--max-old-space-size=4096"
 make generate
 make ui build
 "
