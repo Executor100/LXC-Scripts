@@ -72,7 +72,7 @@ echo -e "${GREEN}✔ CTID: $CTID${NC}"
 # ===== TEMPLATE =====
 echo -e "${YELLOW}📦 Preparando template...${NC}"
 
-pveam update
+pveam update || true
 
 TEMPLATE=$(pveam available | awk '/debian-12/ {print $2; exit}')
 
