@@ -6,7 +6,7 @@ source <(curl -fsSL https://github.com/Executor100/LXC-Scripts/blob/main/misc/bu
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://ghostfol.io/ | Github: https://github.com/ghostfolio/ghostfolio
 
-APP="Ghostfolio"
+APP="stashapp"
 var_tags="${var_tags:-finance;investment}"
 var_cpu="${var_cpu:-2}"
 var_ram="${var_ram:-4096}"
