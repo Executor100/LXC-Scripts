@@ -27,8 +27,12 @@ fetch_and_deploy_gh_release "stash" "stashapp/stash" "tarball" "latest" "/opt/st
 
 msg_info "Setup Stashapp"
 cd /opt/stashapp
-$STD npm ci
-$STD npm run build:production
+$STD make pre-ui
+$STD make generate
+$STD make ui
+$STD make build-release
+#$STD npm ci
+#$STD npm run build:production
 msg_ok "Built Stashapp"
 
 msg_info "Setting up Environment"
