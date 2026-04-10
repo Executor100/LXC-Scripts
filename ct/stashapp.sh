@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-msg_ok "Start Load buil func!\n"
-source <(curl -fsSL https://github.com/Executor100/LXC-Scripts/main/misc/build.func)
+source <(curl -fsSL https://raw.githubusercontent.com/Executor100/LXC-Scripts/refs/heads/main/misc/build.func)
 # Copyright (c) 2021-2026 community-scripts ORG
 # Author: lucasfell
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
