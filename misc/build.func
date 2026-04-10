@@ -4723,7 +4723,7 @@ EOF
           set +Eeuo pipefail
           trap - ERR
           #lxc-attach -n "$CTID" -- bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/install/${var_install}.sh)"
-          lxc-attach -n "$CTID" -- bash -c "$(curl -fsSL https://github.com/Executor100/LXC-Scripts/blob/main/install/${var_install}.sh)"
+          lxc-attach -n "$CTID" -- bash -c "$(curl -fsSL https://github.com/Executor100/LXC-Scripts/main/install/${var_install}.sh)"
           local apt_retry_exit=$?
           set -Eeuo pipefail
           trap 'error_handler' ERR
